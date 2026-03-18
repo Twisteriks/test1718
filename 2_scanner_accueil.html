@@ -253,6 +253,8 @@
         </div>
       </div>
       <div class="scan-hint" id="scan-hint">Cocktail 17/06 — Pointez le QR code</div>
+      <button onclick="showDebug()" style="width:100%;padding:0.4rem;background:#333;color:#aaa;border:none;font-size:0.7rem;cursor:pointer;">🔧 Debug</button>
+      <div id="debug-box" style="display:none;background:#111;color:#0f0;font-family:monospace;font-size:0.7rem;padding:0.6rem;max-height:180px;overflow-y:auto;white-space:pre-wrap;"></div>
     </div>
 
     <div class="info-col">
@@ -819,6 +821,47 @@ function exportResults() {
   const ws = XLSX.utils.json_to_sheet(data);
   XLSX.utils.book_append_sheet(wb, ws, 'Présences');
   XLSX.writeFile(wb, 'presences_' + new Date().toLocaleDateString('fr-FR').replace(/\//g,'-') + '.xlsx');
+}
+
+// ── DEBUG ─────────────────────────────────────────────
+function showDebug() {
+  const box = document.getElementById('debug-box');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  const lines = [];
+  lines.push('=== INFOS DEBUG ===');
+  lines.push('BarcodeDetector: ' + ('BarcodeDetector' in window));
+  lines.push('barcodeDetector obj: ' + (barcodeDetector !== null));
+  lines.push('jsQR: ' + typeof jsQR);
+  lines.push('guests chargés: ' + guests.length);
+  lines.push('mode: ' + currentMode);
+  lines.push('scanning: ' + scanning);
+  lines.push('stream: ' + (stream !== null));
+  const video = document.getElementById('video');
+  lines.push('video.readyState: ' + video.readyState);
+  lines.push('video size: ' + video.videoWidth + 'x' + video.videoHeight);
+  lines.push('');
+  lines.push('--- TEST SCAN MANUEL ---');
+  lines.push('(taper un ID dans recherche)');
+  box.textContent = lines.join('
+');
+
+  // Test jsQR sur frame courante
+  if (typeof jsQR !== 'undefined' && stream) {
+    try {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+      lines.push('jsQR résultat: ' + (code ? code.data : 'rien détecté'));
+    } catch(e) {
+      lines.push('jsQR erreur: ' + e.message);
+    }
+    box.textContent = lines.join('
+');
+  }
 }
 
 // ── TOAST ─────────────────────────────────────────────
