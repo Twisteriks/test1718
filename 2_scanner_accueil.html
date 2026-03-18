@@ -34,6 +34,7 @@
   .mode-btn .mode-icon { font-size: 1.1rem; display: block; }
   .mode-btn.active.cocktail { color: var(--purple); border-color: var(--purple); }
   .mode-btn.active.bus      { color: var(--blue);   border-color: var(--blue); }
+  .mode-btn.active.retour   { color: #e07b20;       border-color: #e07b20; }
   .mode-btn.active.site     { color: var(--green);  border-color: var(--green); }
 
   /* TABS */
@@ -216,9 +217,13 @@
     <span class="mode-icon">🍸</span>
     <span class="mode-label">Cocktail 17/06</span>
   </div>
-  <div class="mode-btn bus" onclick="setMode('bus18', this)">
+  <div class="mode-btn bus" onclick="setMode('bus18aller', this)">
     <span class="mode-icon">🚌</span>
-    <span class="mode-label">Bus 18/06</span>
+    <span class="mode-label">Bus Aller</span>
+  </div>
+  <div class="mode-btn retour" onclick="setMode('bus18retour', this)">
+    <span class="mode-icon">🔄</span>
+    <span class="mode-label">Bus Retour</span>
   </div>
   <div class="mode-btn site" onclick="setMode('site18', this)">
     <span class="mode-icon">📍</span>
@@ -383,9 +388,10 @@ let pendingAccomp = 0;
 let appsScriptUrl = '';
 
 const MODE_CONFIG = {
-  cocktail17: { label: 'Cocktail 17/06', icon: '🍸', hint: 'Cocktail 17/06 — Pointez le QR code', right: 'cocktail17', checkField: 'present17', color: 'var(--purple)' },
-  bus18:      { label: 'Bus 18/06',      icon: '🚌', hint: 'Bus 18/06 — Pointez le QR code',      right: 'bus18',       checkField: 'busCheck',   color: 'var(--blue)' },
-  site18:     { label: 'Mont Valérien',  icon: '📍', hint: 'Mont Valérien — Pointez le QR code',  right: 'accesSite',   checkField: 'siteCheck',  color: 'var(--green)' }
+  cocktail17:  { label: 'Cocktail 17/06', icon: '🍸', hint: 'Cocktail 17/06 — Pointez le QR code',  right: 'cocktail17', checkField: 'present17', color: 'var(--purple)' },
+  bus18aller:  { label: 'Bus — Aller',    icon: '🚌', hint: 'Bus 18/06 Aller — Pointez le QR code', right: 'bus18',      checkField: 'busAller',  color: 'var(--blue)' },
+  bus18retour: { label: 'Bus — Retour',   icon: '🔄', hint: 'Bus 18/06 Retour — Pointez le QR code',right: 'bus18',      checkField: 'busRetour', color: '#e07b20' },
+  site18:      { label: 'Mont Valérien',  icon: '📍', hint: 'Mont Valérien — Pointez le QR code',   right: 'accesSite',  checkField: 'siteCheck', color: 'var(--green)' }
 };
 
 // ── Init ─────────────────────────────────────────────
@@ -647,8 +653,10 @@ function confirmCheck(guest, accompPres) {
   if (currentMode === 'cocktail17') {
     guest.present17 = now;
     if (accompPres !== null) guest.accomp17 = accompPres;
-  } else if (currentMode === 'bus18') {
-    guest.busCheck = now;
+  } else if (currentMode === 'bus18aller') {
+    guest.busAller = now;
+  } else if (currentMode === 'bus18retour') {
+    guest.busRetour = now;
   } else {
     guest.siteCheck = now;
   }
@@ -740,7 +748,7 @@ function renderList() {
   }
 
   container.innerHTML = list.map(g => {
-    const c17 = !!g.present17, bus = !!g.busCheck, site = !!g.siteCheck;
+    const c17 = !!g.present17, site = !!g.siteCheck;
     return '<div class="guest-item" onclick="handleScan(\'' + g.id + '\')">' +
       '<div class="guest-dot ' + (g[cfg.checkField] ? 'present' : '') + '"></div>' +
       '<div class="guest-info"><div class="guest-name">' + displayName(g) + '</div>' +
@@ -749,7 +757,8 @@ function renderList() {
       '<div class="guest-time">' + (g[cfg.checkField] || '') + '</div>' +
       '<div class="guest-pills">' +
       '<span class="gpill ' + (c17 ? 'gpill-done' : 'gpill-pend') + '">🍸</span>' +
-      '<span class="gpill ' + (bus ? 'gpill-done' : 'gpill-pend') + '">🚌</span>' +
+      '<span class="gpill ' + (g.busAller  ? 'gpill-done' : 'gpill-pend') + '">🚌↗</span>' +
+      '<span class="gpill ' + (g.busRetour ? 'gpill-done' : 'gpill-pend') + '">🔄</span>' +
       '<span class="gpill ' + (site ? 'gpill-done' : 'gpill-pend') + '">📍</span>' +
       '</div></div></div>';
   }).join('');
@@ -778,7 +787,8 @@ function exportResults() {
     ID: g.id, Prénom: g.prenom, Nom: g.nom,
     Catégorie: g.categorie, Emplacement: g.emplacement,
     'Cocktail 17/06': g.present17 || '', 'Accomp. 17/06': g.accomp17 || '',
-    'Bus 18/06': g.busCheck || '',
+    'Bus Aller': g.busAller || '',
+    'Bus Retour': g.busRetour || '',
     'Accès site': g.siteCheck || ''
   }));
   const wb = XLSX.utils.book_new();
