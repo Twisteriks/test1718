@@ -253,8 +253,6 @@
         </div>
       </div>
       <div class="scan-hint" id="scan-hint">Cocktail 17/06 — Pointez le QR code</div>
-      <button onclick="showDebug()" style="width:100%;padding:0.4rem;background:#333;color:#aaa;border:none;font-size:0.7rem;cursor:pointer;">🔧 Debug</button>
-      <div id="debug-box" style="display:none;background:#111;color:#0f0;font-family:monospace;font-size:0.7rem;padding:0.6rem;max-height:180px;overflow-y:auto;white-space:pre-wrap;"></div>
     </div>
 
     <div class="info-col">
@@ -296,6 +294,9 @@
         </div>
         <div class="search-suggestions" id="suggestions"></div>
       </div>
+
+      <button onclick="showDebug()" style="background:#f0ece4;border:1px solid var(--border);border-radius:4px;padding:0.4rem 0.8rem;font-size:0.7rem;color:#aaa;cursor:pointer;width:100%;">🔧 Debug</button>
+      <div id="debug-box" style="display:none;background:#2c2c2c;color:#0f0;font-family:monospace;font-size:0.68rem;padding:0.7rem;border-radius:4px;max-height:220px;overflow-y:auto;white-space:pre-wrap;"></div>
 
       <div class="info-waiting" id="info-waiting">
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
