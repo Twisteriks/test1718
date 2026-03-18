@@ -43,12 +43,12 @@
   .tab.active { color: var(--gold); border-color: var(--gold); }
 
   /* PANELS */
-  .panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+  .panel { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
   .panel.active { display: flex; }
 
   /* SCAN PANEL */
   #scan-panel { background: var(--bg); flex-direction: column; }
-  .scan-main { display: flex; flex: 1; overflow: hidden; }
+  .scan-main { display: flex; flex: 1; min-height: 0; }
 
   /* Caméra col */
   .camera-col { display: flex; flex-direction: column; width: 320px; flex-shrink: 0; background: #1a1a1a; }
