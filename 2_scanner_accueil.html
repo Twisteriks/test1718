@@ -10452,7 +10452,7 @@ let scanCooldown = false;
 // ═══════════════════════════════════════════════════════════════
 //  ⚙️  CONFIGURATION — modifier uniquement cette ligne
 // ═══════════════════════════════════════════════════════════════
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwQ6UTk_1gbyPKjPHYNTWBfq5OnoI1M8qtRXwrwXUDPG7rSZyK_nRUCVo7aifE5U6wEpQ/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzGmaT-rkuJFs-uXoFjh8HRLw3zADrKbYjkhh6cCaRMT9um52w5FSzLes8kE69DgynV8w/exec';
 // ═══════════════════════════════════════════════════════════════
 
 let stream = null;
@@ -10635,9 +10635,18 @@ async function scanFrame() {
 }
 
 // ── SCAN LOGIC ───────────────────────────────────────────────────
+// Normalise un nom : minuscules, sans accents, sans espaces superflus
+function normalizeName(s) {
+  return String(s||'').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,' ');
+}
+
 function handleScan(rawValue) {
-  // Supporte "INV-0001 : NOM Prenom" et "INV-0001" (ancien format)
-  var scannedId = rawValue.split(' : ')[0].trim();
+  // Supporte "INV-0001 : Prénom Nom", "CEREM-0020 : Prénom Nom", "INV-0001"
+  var parts = rawValue.split(' : ');
+  var scannedId  = parts[0].trim();
+  var scannedName = parts.length > 1 ? parts[1].trim() : '';
 
   scanCooldown = true;
   setTimeout(function(){scanCooldown=false;}, 3000);
@@ -10645,7 +10654,19 @@ function handleScan(rawValue) {
   var card = document.getElementById('result-card');
   card.style.display = 'block'; card.className = '';
   document.getElementById('info-waiting').style.display = 'none';
+
+  // 1) Recherche par ID exact
   var guest = guests.find(function(g){return g.id===scannedId;});
+
+  // 2) Fallback : recherche par nom (gère les anciens QR CEREM-xxxx)
+  if (!guest && scannedName) {
+    var normQR = normalizeName(scannedName);
+    guest = guests.find(function(g){
+      var fullName = normalizeName((g.prenom||'')+' '+(g.nom||''));
+      return fullName === normQR;
+    });
+    if (guest) console.log('[Scanner] ID inconnu "'+scannedId+'" résolu par nom → '+guest.id);
+  }
   var cfg = MODE_CONFIG[currentMode];
   if (!guest) {
     showResult('not-found','✗','Invité introuvable','','Code non reconnu','badge-red');
