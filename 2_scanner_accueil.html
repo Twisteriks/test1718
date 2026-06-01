@@ -10422,27 +10422,9 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
   <!-- SETUP -->
   <div id="setup-panel" class="panel">
     <div class="setup-section">
-      <h2>1 — Source de données</h2>
-      <div class="field-row">
-        <span class="field-label">Mode</span>
-        <select id="source-mode" onchange="toggleSourceMode()">
-          <option value="sheets">Google Sheets (temps réel)</option>
-          <option value="local">Fichier Excel local</option>
-        </select>
-      </div>
-      <div id="sheets-section">
-        <div class="field-row" style="margin-top:0.4rem">
-          <span class="field-label">URL Script</span>
-          <input type="text" id="apps-script-url" placeholder="https://script.google.com/macros/s/…/exec" oninput="saveUrl()">
-        </div>
-        <button class="btn-full" onclick="syncFromSheets()">🔄 Synchroniser depuis Sheets</button>
-        <div class="sync-status" id="sync-status"></div>
-      </div>
-      <div id="local-section" style="display:none">
-        <label class="upload-btn-label" for="xlsxInput" style="margin-top:0.7rem">📂 Sélectionner le fichier Excel</label>
-        <input type="file" id="xlsxInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="loadLocalFile(this)">
-        <div class="file-status" id="file-status">Aucun fichier chargé</div>
-      </div>
+      <h2>1 — Connexion Sheets</h2>
+      <div class="sync-status" id="sync-status"></div>
+      <button class="btn-full" onclick="syncFromSheets()">🔄 Synchroniser depuis Sheets</button>
     </div>
     <div class="setup-section">
       <h2>2 — Caméra</h2>
@@ -10467,11 +10449,16 @@ let guests = [];
 let currentMode = 'cocktail17';
 let scanning = false;
 let scanCooldown = false;
+// ═══════════════════════════════════════════════════════════════
+//  ⚙️  CONFIGURATION — modifier uniquement cette ligne
+// ═══════════════════════════════════════════════════════════════
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwQ6UTk_1gbyPKjPHYNTWBfq5OnoI1M8qtRXwrwXUDPG7rSZyK_nRUCVo7aifE5U6wEpQ/exec';
+// ═══════════════════════════════════════════════════════════════
+
 let stream = null;
 let scanInterval = null;
 let pendingGuest = null;
 let pendingAccomp = 0;
-let appsScriptUrl = '';
 let barcodeDetector = null;
 
 if ('BarcodeDetector' in window) {
@@ -10493,11 +10480,11 @@ const MODE_CONFIG = {
 
 // ── INIT ─────────────────────────────────────────────────────────
 window.onload = function() {
-  var saved = localStorage.getItem('apps_script_url');
-  if (saved) { appsScriptUrl = saved; document.getElementById('apps-script-url').value = saved; }
-  var srcMode = localStorage.getItem('source_mode') || 'sheets';
-  document.getElementById('source-mode').value = srcMode;
   toggleSourceMode();
+  // Synchronisation automatique au démarrage si URL configurée
+  if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== 'URL_A_REMPLACER') {
+    syncFromSheets();
+  }
 };
 
 // ── TABS ─────────────────────────────────────────────────────────
@@ -10521,23 +10508,16 @@ function setMode(mode, el) {
 
 // ── SOURCE ───────────────────────────────────────────────────────
 function toggleSourceMode() {
-  var mode = document.getElementById('source-mode').value;
-  localStorage.setItem('source_mode', mode);
-  document.getElementById('sheets-section').style.display = mode==='sheets' ? 'block' : 'none';
-  document.getElementById('local-section').style.display  = mode==='local'  ? 'block' : 'none';
-}
-function saveUrl() {
-  appsScriptUrl = document.getElementById('apps-script-url').value.trim();
-  localStorage.setItem('apps_script_url', appsScriptUrl);
+  // Mode Sheets uniquement — URL hardcodée dans la source
 }
 
 // ── SHEETS ───────────────────────────────────────────────────────
 async function syncFromSheets() {
-  if (!appsScriptUrl) { showToast('URL manquante'); return; }
+  if (!APPS_SCRIPT_URL) { showToast('URL manquante'); return; }
   var el = document.getElementById('sync-status');
   el.textContent = '⏳ Synchronisation…'; el.className = 'sync-status';
   try {
-    var r = await fetch(appsScriptUrl + '?action=all');
+    var r = await fetch(APPS_SCRIPT_URL + '?action=all');
     var d = await r.json();
     if (!d.ok) throw new Error(d.error || 'Erreur');
     guests = d.guests;
@@ -10550,8 +10530,8 @@ async function syncFromSheets() {
   }
 }
 async function pushCheck(id, event, accomp) {
-  if (!appsScriptUrl) return;
-  try { await fetch(appsScriptUrl, { method:'POST', body: JSON.stringify({id,event,accomp}) }); }
+  if (!APPS_SCRIPT_URL) return;
+  try { await fetch(APPS_SCRIPT_URL, { method:'POST', body: JSON.stringify({id,event,accomp}) }); }
   catch(e) {}
 }
 
@@ -10655,7 +10635,10 @@ async function scanFrame() {
 }
 
 // ── SCAN LOGIC ───────────────────────────────────────────────────
-function handleScan(scannedId) {
+function handleScan(rawValue) {
+  // Supporte "INV-0001 : NOM Prenom" et "INV-0001" (ancien format)
+  var scannedId = rawValue.split(' : ')[0].trim();
+
   scanCooldown = true;
   setTimeout(function(){scanCooldown=false;}, 3000);
   clearSearch();
@@ -10721,8 +10704,7 @@ function confirmCheck(guest, accompPres) {
   document.getElementById('res-badge').textContent = badge;
   document.getElementById('res-badge').style.display='';
   document.getElementById('res-meta').textContent = currentMode==='cocktail17'&&accompPres>0 ? accompPres+' accompagnant'+(accompPres>1?'s':'')+' — '+total+' personnes' : '';
-  var srcMode = document.getElementById('source-mode').value;
-  if (srcMode==='sheets') pushCheck(guest.id, cfg.event, accompPres||0);
+  pushCheck(guest.id, cfg.event, accompPres||0);
   updateHeader(); renderList();
   if(navigator.vibrate) navigator.vibrate([120]);
 }
@@ -10835,7 +10817,7 @@ function toggleDebug() {
   var video = document.getElementById('video');
   lines.push('video.readyState          : ' + video.readyState + ' (4=OK)');
   lines.push('video resolution          : ' + video.videoWidth + 'x' + video.videoHeight);
-  lines.push('appsScriptUrl             : ' + (appsScriptUrl ? 'défini' : 'VIDE'));
+  lines.push('APPS_SCRIPT_URL             : ' + (APPS_SCRIPT_URL ? 'défini' : 'VIDE'));
   if (typeof jsQR !== 'undefined' && stream && video.videoWidth > 0) {
     try {
       var canvas = document.getElementById('canvas');
