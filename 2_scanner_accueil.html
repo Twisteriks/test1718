@@ -10504,6 +10504,9 @@ function setMode(mode, el) {
   updateHeader();
   renderList();
   showToast(MODE_CONFIG[mode].icon + ' ' + MODE_CONFIG[mode].label);
+  // Re-sync automatique à chaque changement de mode
+  // Garantit que les données sont fraîches (ex. passage du 17 au 18)
+  syncFromSheets();
 }
 
 // ── SOURCE ───────────────────────────────────────────────────────
@@ -10560,7 +10563,7 @@ function loadLocalFile(input) {
         categorie: get([/cat[eé]g/i,/type/i]),
         emplacement: get([/emplace/i,/tribune/i,/zone/i]),
         present17: get([/present_?17/i]),
-        accomp17: parseInt(get([/accomp_?17/i]))||0,
+        accomp17Check: parseInt(get([/accomp_?17/i]))||0,
         busAller: get([/bus_?aller/i]),
         busRetour: get([/bus_?retour/i]),
         siteCheck: get([/site_?check/i]),
@@ -10686,10 +10689,10 @@ function handleScan(rawValue) {
   }
   showResult('found','✓',displayName(guest),guest.categorie||'','','badge-green');
   showRights(guest);
-  if (currentMode==='cocktail17' && guest.accomp>0) {
-    pendingGuest=guest; pendingAccomp=guest.accomp;
+  if (currentMode==='cocktail17' && guest.accompCocktail>0) {
+    pendingGuest=guest; pendingAccomp=guest.accompCocktail;
     document.getElementById('accomp-val').textContent=pendingAccomp;
-    document.getElementById('accomp-max').textContent='/ '+guest.accomp+' max';
+    document.getElementById('accomp-max').textContent='/ '+guest.accompCocktail+' max';
     document.getElementById('accomp-zone').style.display='block';
     document.getElementById('res-badge').style.display='none';
   } else {
@@ -10716,7 +10719,7 @@ function confirmAccomp() {
 function confirmCheck(guest, accompPres) {
   var now = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   var cfg = MODE_CONFIG[currentMode];
-  if (currentMode==='cocktail17') { guest.present17=now; guest.accomp17=accompPres||0; }
+  if (currentMode==='cocktail17') { guest.present17=now; guest.accomp17Check=accompPres||0; }
   else if (currentMode==='bus18aller')  { guest.busAller=now; }
   else if (currentMode==='bus18retour') { guest.busRetour=now; }
   else if (currentMode==='site18')      { guest.siteCheck=now; }
@@ -10800,7 +10803,7 @@ function updateHeader() {
   var cfg = MODE_CONFIG[currentMode];
   var checked = guests.filter(function(g){return !!g[cfg.checkField];}).length;
   var persons = currentMode==='cocktail17'
-    ? guests.filter(function(g){return g.present17;}).reduce(function(s,g){return s+1+(g.accomp17||0);},0)
+    ? guests.filter(function(g){return g.present17;}).reduce(function(s,g){return s+1+(g.accomp17Check||0);},0)
     : checked;
   document.getElementById('h-present').textContent = checked;
   document.getElementById('h-persons').textContent = persons;
@@ -10814,7 +10817,7 @@ function exportResults() {
   if (!guests.length) { showToast('Aucune donnée'); return; }
   var data = guests.map(function(g){return {
     ID:g.id, Prénom:g.prenom, Nom:g.nom, Catégorie:g.categorie, Emplacement:g.emplacement,
-    'Cocktail 17/06':g.present17||'', 'Accomp. 17/06':g.accomp17||'',
+    'Cocktail 17/06':g.present17||'', 'Accomp. 17/06':g.accomp17Check||'',
     'Bus Aller':g.busAller||'', 'Bus Retour':g.busRetour||'', 'Accès site':g.siteCheck||''
   };});
   var wb = XLSX.utils.book_new();
