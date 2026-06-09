@@ -10387,6 +10387,11 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
               <div class="res-badge" id="res-badge"></div>
             </div>
           </div>
+          <!-- Noms des accompagnants -->
+          <div id="accomp-names-zone" style="display:none;margin-top:0.6rem;padding:0.5rem 0.6rem;background:rgba(0,0,0,0.04);border-radius:6px;border-left:3px solid #B8972E;">
+            <div style="font-size:0.7rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.3rem;">Accompagnants</div>
+            <div id="accomp-names-list" style="font-size:0.82rem;color:#1B2B5E;line-height:1.6;"></div>
+          </div>
           <div class="accomp-zone" id="accomp-zone" style="display:none;margin-top:0.7rem">
             <div class="accomp-label">Accompagnants présents</div>
             <div class="accomp-counter">
@@ -10745,15 +10750,18 @@ function handleScan(rawValue) {
   if (!guest[cfg.right]) {
     showResult('denied','⛔',displayName(guest),guest.categorie||'','Non autorisé pour cet événement','badge-red');
     showRights(guest); document.getElementById('accomp-zone').style.display='none';
+    showAccompNames(guest, false);
     if(navigator.vibrate) navigator.vibrate([200,100,200]); return;
   }
   if (guest[cfg.checkField]) {
     showResult('already','⚠',displayName(guest),guest.categorie||'','Déjà enregistré à '+guest[cfg.checkField],'badge-gold');
     showRights(guest); document.getElementById('accomp-zone').style.display='none';
+    showAccompNames(guest, true);
     if(navigator.vibrate) navigator.vibrate([50,80,50]); return;
   }
   showResult('found','✓',displayName(guest),guest.categorie||'','','badge-green');
   showRights(guest);
+  showAccompNames(guest, true);
   if (currentMode==='cocktail17' && guest.accompCocktail>0) {
     pendingGuest=guest; pendingAccomp=guest.accompCocktail;
     document.getElementById('accomp-val').textContent=pendingAccomp;
@@ -10807,6 +10815,20 @@ function showResult(cls, icon, name, categorie, meta, badgeCls) {
   var b = document.getElementById('res-badge');
   b.textContent=''; b.className='res-badge '+badgeCls; b.style.display='';
 }
+function showAccompNames(guest, show) {
+  var zone = document.getElementById('accomp-names-zone');
+  var list = document.getElementById('accomp-names-list');
+  if (!zone || !list) return;
+  // Choisir les noms selon le mode actif
+  var isCerem = (currentMode === 'site18' || currentMode === 'bus18aller' || currentMode === 'bus18retour');
+  var names = isCerem ? (guest.nomsCeremonie || '') : (guest.nomsCocktail || '');
+  if (!show || !names) { zone.style.display = 'none'; return; }
+  var parts = names.split('|').map(function(n){ return n.trim(); }).filter(Boolean);
+  if (!parts.length) { zone.style.display = 'none'; return; }
+  list.innerHTML = parts.map(function(n){ return '• ' + n; }).join('<br>');
+  zone.style.display = 'block';
+}
+
 function displayName(g) { return [g.prenom,g.nom].filter(Boolean).join(' ')||g.id; }
 
 // ── SEARCH ───────────────────────────────────────────────────────
