@@ -10819,24 +10819,49 @@ function showAccompNames(guest, show) {
   var zone = document.getElementById('accomp-names-zone');
   var list = document.getElementById('accomp-names-list');
   if (!zone || !list) return;
-  var isCerem = (currentMode === 'site18' || currentMode === 'bus18aller' || currentMode === 'bus18retour');
-  var names = isCerem ? (guest.nomsCeremonie || '') : (guest.nomsCocktail || '');
+  var isBus    = (currentMode === 'bus18aller' || currentMode === 'bus18retour');
+  var isCerem  = (currentMode === 'site18');
+  var isCktOrBusOrCerem = isBus || isCerem;
+  var names = isCktOrBusOrCerem ? (guest.nomsCeremonie || '') : (guest.nomsCocktail || '');
   if (!show || !names) { zone.style.display = 'none'; return; }
+
   var parts = names.split('|').map(function(n){ return n.trim(); }).filter(Boolean);
   if (!parts.length) { zone.style.display = 'none'; return; }
-  list.innerHTML = parts.map(function(entry) {
-    var idx = entry.lastIndexOf(':');
-    var nom = idx > -1 ? entry.substring(0, idx).trim() : entry.trim();
-    var cat = idx > -1 ? entry.substring(idx + 1).trim() : '';
-    var isPorteur = (cat === 'Porteur de croix');
+
+  var items = parts.map(function(entry) {
+    var segs  = entry.split(':');
+    var nom   = segs[0] ? segs[0].trim() : '';
+    var cat   = segs[1] ? segs[1].trim() : '';
+    var hasBus= segs[2] === 'bus';
+    return { nom: nom, cat: cat, bus: hasBus };
+  }).filter(function(it){ return it.nom; });
+
+  // En mode bus : n'afficher que ceux qui prennent le bus
+  if (isBus) {
+    items = items.filter(function(it){ return it.bus; });
+    if (!items.length) {
+      zone.style.display = 'block';
+      list.innerHTML = '<em style="color:#888;font-size:0.8rem;">Aucun accompagnant dans ce bus</em>';
+      return;
+    }
+  }
+
+  list.innerHTML = items.map(function(it) {
+    var isPorteur = (it.cat === 'Porteur de croix');
+    var busTag = it.bus && !isBus
+      ? ' <span style="font-size:9px;background:#e07b00;color:white;border-radius:3px;padding:1px 4px;">Bus</span>'
+      : '';
     if (isPorteur) {
-      return '<span style="display:inline-flex;align-items:center;gap:5px;background:#FBF5E8;border:1px solid #B8972E;border-radius:4px;padding:1px 6px;margin:1px 0;font-weight:600;color:#1B2B5E;">'
-        + '<span style="font-size:9px;background:#B8972E;color:white;border-radius:3px;padding:1px 4px;letter-spacing:.03em;">✟</span>'
-        + nom + '</span>';
+      return '<span style="display:inline-flex;align-items:center;gap:5px;background:#FBF5E8;border:1px solid #B8972E;border-radius:4px;padding:2px 6px;margin:1px 0;font-weight:600;color:#1B2B5E;">'
+        + '<span style="font-size:9px;background:#B8972E;color:white;border-radius:3px;padding:1px 4px;">✟</span>'
+        + it.nom + busTag + '</span>';
     } else {
-      return '<span style="color:#444;">• ' + nom + (cat && cat !== 'Famille' ? ' <em style="font-size:0.75em;color:#888;">(' + cat + ')</em>' : '') + '</span>';
+      var catLabel = (it.cat && it.cat !== 'Famille')
+        ? ' <em style="font-size:0.75em;color:#888;">(' + it.cat + ')</em>' : '';
+      return '<span>• ' + it.nom + catLabel + busTag + '</span>';
     }
   }).join('<br>');
+
   zone.style.display = 'block';
 }
 
