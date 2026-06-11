@@ -10312,23 +10312,24 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
 </header>
 
 <div class="mode-bar">
-  <div class="mode-btn cocktail active" onclick="setMode('cocktail17',this)">
+  <div class="mode-btn cocktail active" data-day="17" onclick="setMode('cocktail17',this)">
     <span class="mode-icon">🍸</span>
     <span>Cocktail 17/06</span>
   </div>
-  <div class="mode-btn bus" onclick="setMode('bus18aller',this)">
+  <div class="mode-btn bus" data-day="18" onclick="setMode('bus18aller',this)">
     <span class="mode-icon">🚌</span>
     <span>Bus Aller</span>
   </div>
-  <div class="mode-btn retour" onclick="setMode('bus18retour',this)">
+  <div class="mode-btn retour" data-day="18" onclick="setMode('bus18retour',this)">
     <span class="mode-icon">🔄</span>
     <span>Bus Retour</span>
   </div>
-  <div class="mode-btn site" onclick="setMode('site18',this)">
+  <div class="mode-btn site" data-day="18" onclick="setMode('site18',this)">
     <span class="mode-icon">📍</span>
     <span>Mont Valérien</span>
   </div>
 </div>
+<div id="day-lock-banner" style="display:none;text-align:center;font-size:0.7rem;color:#B8972E;background:#FBF5E8;padding:0.4rem;border-bottom:1px solid #eee;"></div>
 
 <div class="tabs">
   <div class="tab active" onclick="showTab('scan')">📷 Scanner</div>
@@ -10499,8 +10500,51 @@ const MODE_CONFIG = {
 };
 
 // ── INIT ─────────────────────────────────────────────────────────
+// ── VERROUILLAGE PAR JOUR ──────────────────────────────────────────
+// 17/06 : Cocktail uniquement | 18/06 : Bus + Mont-Valérien uniquement
+// Forçage manuel possible via ?day=17 ou ?day=18 dans l'URL (debug/test)
+function getEventDay() {
+  var params = new URLSearchParams(window.location.search);
+  var forced = params.get('day');
+  if (forced === '17' || forced === '18') return forced;
+  var now = new Date();
+  // Comparaison sur date locale Europe/Paris
+  var d = now.getDate(), m = now.getMonth()+1, y = now.getFullYear();
+  if (y===2026 && m===6 && d===17) return '17';
+  if (y===2026 && m===6 && d===18) return '18';
+  return null; // hors période : tout déverrouillé (préparation/tests)
+}
+
+function applyDayLock() {
+  var day = getEventDay();
+  var banner = document.getElementById('day-lock-banner');
+  document.querySelectorAll('.mode-btn').forEach(function(btn) {
+    var btnDay = btn.getAttribute('data-day');
+    var locked = (day !== null && btnDay !== day);
+    btn.classList.toggle('locked', locked);
+    btn.style.opacity = locked ? '0.3' : '1';
+    btn.style.pointerEvents = locked ? 'none' : 'auto';
+  });
+  if (day === '17') {
+    banner.style.display = 'block';
+    banner.textContent = '🍸 Journée du 17 juin — seul le scan Cocktail est actif';
+  } else if (day === '18') {
+    banner.style.display = 'block';
+    banner.textContent = '📍 Journée du 18 juin — Bus & Mont-Valérien actifs';
+    // Bascule automatique sur un mode du jour si le mode courant est verrouillé
+    var activeBtn = document.querySelector('.mode-btn.active');
+    if (activeBtn && activeBtn.getAttribute('data-day') !== '18') {
+      var firstAvailable = document.querySelector('.mode-btn[data-day="18"]');
+      if (firstAvailable) setMode(firstAvailable.getAttribute('onclick').match(/'([^']+)'/)[1], firstAvailable);
+    }
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
 window.onload = function() {
   toggleSourceMode();
+  applyDayLock();
   // Synchronisation automatique au démarrage si URL configurée
   if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== 'URL_A_REMPLACER') {
     syncFromSheets();
@@ -10517,6 +10561,13 @@ function showTab(name) {
 
 // ── MODE ─────────────────────────────────────────────────────────
 function setMode(mode, el) {
+  // Sécurité : empêche le changement de mode si verrouillé pour le jour
+  var day = getEventDay();
+  var btnDay = el.getAttribute('data-day');
+  if (day !== null && btnDay !== day) {
+    showToast('🔒 Mode disponible uniquement le ' + btnDay + ' juin');
+    return;
+  }
   currentMode = mode;
   document.querySelectorAll('.mode-btn').forEach(function(b){ b.classList.remove('active'); });
   el.classList.add('active');
@@ -10902,7 +10953,7 @@ function renderList() {
   }).sort(function(a,b){
     var ac=!!a[cfg.checkField],bc=!!b[cfg.checkField];
     if(ac!==bc) return bc-ac;
-    return displayName(a).localeCompare(displayName(b));
+    return (a.nom||'').localeCompare(b.nom||'') || (a.prenom||'').localeCompare(b.prenom||'');
   });
   var container = document.getElementById('guest-list');
   if (!list.length) { container.innerHTML='<div style="text-align:center;padding:2rem;color:#aaa;font-size:0.8rem">Aucun invité</div>'; return; }
